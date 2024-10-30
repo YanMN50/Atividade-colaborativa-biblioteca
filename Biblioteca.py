@@ -1,6 +1,13 @@
+"""
+Alunos: Maria Luiza, Henrique Santos e Yan Mendes
+
+"""
+
+
 import os
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.orm import sessionmaker, declarative_base
+import time
 
 db = create_engine("sqlite:///meubanco.db")
 
@@ -22,6 +29,21 @@ class Cliente(Base):
         self.nome = nome
         self.email = email
         self.senha = senha
+
+class Funcionario(Base):
+    __tablename__ = "funcionario"
+    
+    cpf = Column(Integer, primary_key=True)
+    nome = Column(String)
+    email = Column(String)
+    senha = Column(String)
+
+    
+    def __init__(self, cpf:int, nome:str, email:str, senha:str):
+        self.cpf = cpf
+        self.nome = nome
+        self.email = email
+        self.senha = senha     
 
 class Livros(Base):
     __tablename__ = "livro"
@@ -45,21 +67,72 @@ class Carrinho:
 
 carrinho = Carrinho()
 
+def limpar_tela():
+    os.system("cls || clear")
+
 def menu():
     print("="*40)
     print(f"{'Senai':^40}")
     print("="*40)
     print("""
     1 - Adicionar dados
-    2 - Consultar livros
-    3 - Atualizar os dados 
-    4 - Adicionar ao carrinho 
-    5 - Finalizar compra
+    2 - Fazer login 
+    3 - Atualizar os dados  
+    4 - Adicionar funcionario
+    5 - Deletar Funcionario
+    6 - Consultar Funcionario
     0 - Sair do sistema.     
     """)
 
-def solicitando_dados():
-    inserir_matricula = int(input("Digite sua matricula: "))
+def menu_2():
+    print("="*40)
+    print(f"{'Senai':^40}")
+    print("="*40)
+    print("""
+    1 - Adicionar ao carrinho 
+    2 - Consultar livro
+    3 - Finalizar compra
+    0 - Sair do sistema.     
+    """)
+
+
+def login():
+    while True:
+        matricula_cliente = int(input("Digite sua matricula: "))
+        senha_cliente = input("Digte sua senha: ")
+        cliente = session.query(Cliente).filter_by(matricula = matricula_cliente, senha = senha_cliente).first()
+        if cliente:
+            print(f"Login efetuado {cliente.nome}")
+            while True:
+                limpar_tela()
+                menu_2()
+                opcao2 = input("Resposta: ")
+                match opcao2:
+                    case "1":
+                        adicionar_ao_carrinho()
+                    case "2":
+                        consultando_livros()           
+                    case "3":
+                        finalizar_compra()
+
+                    case "0":
+                        print("Sistema encerrado.")
+                        return
+                    case _:
+                        print("Opção invalida.")
+                        continue
+        else:
+            print("Login não encontrado.")
+    
+
+
+
+def cadastrando_usuario():
+
+    inserir_matricula = int(input("Digite sua matrícula: "))
+    if session.query(Cliente).filter_by(matricula=inserir_matricula).first():
+        print("Matrícula já cadastrada.")
+        return
     inserir_nome = input("Digite seu nome: ")
     inserir_email = input("Digite seu email: ")
     inserir_senha = input("Digite sua senha: ")
@@ -68,7 +141,38 @@ def solicitando_dados():
     session.add(cliente)
     session.commit()
     print("Cliente adicionado com sucesso!")
-    limpar_tela()
+    
+
+
+def adicionando_funcionario():
+
+    inserir_cpf = int(input("Digite seu cpf: "))
+    if session.query(Funcionario).filter_by(cpf=inserir_cpf).first():
+        print("CPF já cadastrado.")
+        return
+
+    inserir_nome = input("Digite seu nome: ")
+    inserir_email = input("Digite seu email: ")
+    inserir_senha = input("Digite sua senha: ")
+
+    funcionario= Funcionario (cpf=inserir_cpf, nome=inserir_nome, email=inserir_email, senha=inserir_senha)
+    session.add(funcionario)
+    session.commit()
+    print("Funcionário adicionado com sucesso!")
+   
+
+def deletando_funcionario():
+    
+    cpf_funcionario = int(input("Informe o cpf do funcionario: "))
+    funcionario = session.query(Funcionario).filter_by(cpf=cpf_funcionario).first()
+
+    if funcionario:
+        session.delete(funcionario)
+        session.commit()
+        print("Funcionario deletado")
+    else:
+        print("Funcionario não encontrado")    
+
 
 def atualizando_dados():
     matricula_cliente = int(input("Digite sua matricula: "))
@@ -85,32 +189,27 @@ def atualizando_dados():
     else:
         print("Usuário não encontrado")
 
-def adicionar_livros_iniciais():
-    livros_iniciais = [
+def livros():
+    livros = [
         {"titulo": "Dom Casmurro", "autor": "Machado de Assis", "codigo": 1, "preco": 30},
         {"titulo": "O Alquimista", "autor": "Paulo Coelho", "codigo": 2, "preco": 45},
         {"titulo": "1984", "autor": "George Orwell", "codigo": 3, "preco": 25},
         {"titulo": "A Moreninha", "autor": "Joaquim Manuel de Macedo", "codigo": 4, "preco": 35},
         {"titulo": "O Pequeno Príncipe", "autor": "Antoine de Saint-Exupéry", "codigo": 5, "preco": 40},
         {"titulo": "O Senhor dos Anéis", "autor": "J.R.R. Tolkien", "codigo": 6, "preco": 55},
-        {"titulo": "A Revolução dos Bichos", "autor": "George Orwell", "codigo": 7, "preco": 20},
-        {"titulo": "Cem Anos de Solidão", "autor": "Gabriel García Márquez", "codigo": 8, "preco": 50},
-        {"titulo": "Orgulho e Preconceito", "autor": "Jane Austen", "codigo": 9, "preco": 30},
-        {"titulo": "A Metamorfose", "autor": "Franz Kafka", "codigo": 10, "preco": 25},
     ]
     
-    for livro in livros_iniciais:
-        novo_livro = Livros(titulo=livro["titulo"], autor=livro["autor"], codigo=livro["codigo"], preco=livro["preco"])
-        session.add(novo_livro)
-
+    for livro in livros:
+        if not session.query(Livros).filter_by(codigo=livro["codigo"]).first():
+            novos_livros = Livros(titulo=livro["titulo"], autor=livro["autor"], codigo=livro["codigo"], preco=livro["preco"])
+            session.add(novos_livros)
     session.commit()
-    print("Livros iniciais adicionados com sucesso!")
 
 def consultando_livros():
     livros = session.query(Livros).all()
     for livro in livros:
         print(f"Código: {livro.codigo}, Título: {livro.titulo}, Autor: {livro.autor}, Preço: R${livro.preco}")
-    input("Pressione Enter para continuar...")
+    input("Pressione Enter para voltar ao menu...")
 
 def adicionar_ao_carrinho():
     codigo_livro = int(input("Digite o código do livro que deseja adicionar ao carrinho: "))
@@ -133,30 +232,43 @@ def finalizar_compra():
     print(f"Total da compra: R${total:.2f}")
     carrinho.itens.clear()  # Limpa o carrinho após a compra
     print("Compra finalizada com sucesso!")
+    time.sleep(10)
 
-def limpar_tela():
-    os.system("cls || clear")
+def lista_funcionarios():
+    lista_funcionarios = session.query(Funcionario).all()
+    if lista_funcionarios:
+        for funcionario in lista_funcionarios:
+            print(f"{funcionario.nome},{funcionario.email},{funcionario.cpf}")
+    else:
+        print("Nenhum funcionário cadastrado.")
+
+
 
 # Inicializa os livros
-adicionar_livros_iniciais()
+livros()
 
 while True:
+    limpar_tela()
     menu()
     opcao = input("Resposta: ")
     match opcao:
         case "1":
-            solicitando_dados()
+            cadastrando_usuario()
         case "2":
-            consultando_livros()
+            login()
         case "3":
             atualizando_dados()
         case "4":
-            adicionar_ao_carrinho()
+            adicionando_funcionario()
         case "5":
-            finalizar_compra()
+            deletando_funcionario()
+        case "6":
+            print("Listando funcionários...")
+            lista_funcionarios()    
         case "0":
             print("Saindo do sistema...")
             break
         case _:
             print("Opção inválida.")
             continue
+
